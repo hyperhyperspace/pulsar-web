@@ -6,36 +6,20 @@ import ChainView from './ChainView';
 import { PeerComponent } from '@hyper-hyper-space/react';
 //import reportWebVitals from './reportWebVitals';
 import { } from '@hyper-hyper-space/pulsar';
+import App from './App';
 
 const main = async () => {
 
   //const wordCode = ['theater','milk','wander'];
-  const wordCode = ['butcher','fire','flag'];
-  const wordCodeLang = 'en';
+  //const wordCode = ['butcher','fire','flag'];
+  //const wordCodeLang = 'en';
 
-  const backend = new IdbBackend(wordCode.join('-') + '-' + wordCodeLang);
-
-  let backendError = undefined;
-
-  try {
-    await backend.ready();
-  } catch (e) {
-    backendError = e;
-  }
   
-
-  const store     = new Store(backend);
-  const resources = await Resources.create({store: store});
-  
-  const init = { wordCode: wordCode, wordCodeLang: wordCodeLang}
-
 
 
   ReactDOM.render(
     <React.StrictMode>
-      <PeerComponent resources={resources}>
-        <ChainView  resources={resources} init={init}/>
-      </PeerComponent>
+        <App />
     </React.StrictMode>,
     document.getElementById('root')
   );

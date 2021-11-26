@@ -5,7 +5,7 @@ import React, { useState } from 'react';
 
 import './ChainView.css';
 
-function ChainView(props: {resources: Resources, init: SpaceInit}) {
+function ChainView(props: {resources: Resources, init?: SpaceInit}) {
 
     const space      = useSpace<Blockchain>(props.init, true, false);
     const blockchain = useStateObject(space, true)?.value;
@@ -15,15 +15,18 @@ function ChainView(props: {resources: Resources, init: SpaceInit}) {
 
     space?.startSync();
 
-    console.log(blockchain?._headBlock?._blockNumber)
-    console.log(blockchain?.hasLoadedAllChanges())
-    console.log(blockchain?.isSynchronizing())
-
     const loadedSpace = space !== undefined;
     const loadedChain = loadedSpace && blockchain?.hasLoadedAllChanges();
 
     const headBlock       = blockchain?._headBlock;
     const headBlockNumber = headBlock?._blockNumber;
+
+    const headBlockNumberForLoading = headBlockNumber === undefined? undefined :
+                                        ((headBlockNumber < BigInt(10)) ?
+                                            headBlockNumber
+                                        :
+                                            (headBlockNumber - headBlockNumber % BigInt(10))
+                                        );
 
     let whales: Array<[Hash, bigint]> = [];
 
@@ -54,7 +57,7 @@ function ChainView(props: {resources: Resources, init: SpaceInit}) {
     }
     
     return (
-        <div id="chatView">
+        <div id="chainView">
             <div className="page inner width padding">
                 <h1>Pulsar - The Web Blockchain</h1>
             </div>
@@ -69,22 +72,22 @@ function ChainView(props: {resources: Resources, init: SpaceInit}) {
                                 <table>
                                     <thead>
                                     <tr>
-                                        <td className="text-padding small"></td>
-                                        <td className="text-padding small">Block Hash</td>
-                                        <td className="text-padding small">Coinbase</td>
-                                        <td className="text-padding small">Tx</td>
-                                        <td className="text-padding small">Timestamp</td>
+                                        <td className="text-padding tiny"></td>
+                                        <td className="text-padding tiny">Block Hash</td>
+                                        <td className="text-padding tiny">Coinbase</td>
+                                        <td className="text-padding tiny">Tx</td>
+                                        <td className="text-padding tiny">Timestamp</td>
                                     </tr>
                                     </thead>
 
                                     <tbody>
                                     {lastBlocks.map((block?: BlockOp) => 
                                         (<tr key={block?.getLastHash()}>
-                                            <td className="text-padding small">#{block?._blockNumber?.toString(10)}</td>
-                                            <td className="text-padding small">{block?.getLastHash()}</td>
-                                            <td className="text-padding small">{block?.getAuthor()?.getLastHash()}</td>
-                                            <td className="text-padding small">{block?.transactions?.length || 0}</td>
-                                            <td className="text-padding small">{new Date(Number(block?.getTimestampMillisecs())/10**(FixedPoint.DECIMALS)).toLocaleString()}</td>
+                                            <td className="text-padding tiny">#{block?._blockNumber?.toString(10)}</td>
+                                            <td className="text-padding tiny">{block?.getLastHash()}</td>
+                                            <td className="text-padding tiny">{block?.getAuthor()?.getLastHash()}</td>
+                                            <td className="text-padding tiny">{block?.transactions?.length || 0}</td>
+                                            <td className="text-padding tiny">{new Date(Number(block?.getTimestampMillisecs())/10**(FixedPoint.DECIMALS)).toLocaleString()}</td>
                                         </tr>)
                                     )}
                                     </tbody>
@@ -93,15 +96,15 @@ function ChainView(props: {resources: Resources, init: SpaceInit}) {
                                 <table>
                                     <thead>
                                         <tr>
-                                            <td className="text-padding small">Address</td>
-                                            <td className="text-padding small">Balance</td>
+                                            <td className="text-padding tiny">Address</td>
+                                            <td className="text-padding tiny">Balance</td>
                                         </tr>
                                     </thead>
                                     <tbody>
                                     {whales.map((pair: [Hash, bigint]) => 
                                         (<tr key={pair[0]}>
-                                            <td className="text-padding small">#{pair[0]}</td>
-                                            <td className="text-padding small">{pair[1].toString(10)}</td>
+                                            <td className="text-padding tiny">{pair[0]}</td>
+                                            <td className="text-padding tiny">{FixedPoint.toNumber(pair[1])}</td>
                                         </tr>)
                                     )}
                                     </tbody>
@@ -111,7 +114,12 @@ function ChainView(props: {resources: Resources, init: SpaceInit}) {
                     }
                     { !loadedChain && 
                         <React.Fragment>
-                            <span>Loading block #{headBlockNumber?.toString(10)}</span>
+                            { headBlockNumberForLoading === undefined &&
+                                <span>Initializing...</span>
+                            }
+                            { headBlockNumberForLoading !== undefined &&
+                                <span>Loading block #{headBlockNumberForLoading.toString(10)}</span>
+                            }
                         </React.Fragment>
                     }
                 </React.Fragment>
