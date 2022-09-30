@@ -155,7 +155,7 @@ function ChainView(props: {resources: Resources, init?: SpaceInit}) {
                                         (<tr key={pair[0]}>
                                             <td className="text-padding tiny">{pair[0]}</td>
                                             <td className="text-padding tiny">{Space.getWordCodingForHash(pair[0]).join(' ')}</td>
-                                            <td className="text-padding tiny">{whaleInfo.get(pair[0])?.name || 'anonymous'}</td>
+                                            <td className="text-padding tiny">{whaleInfo.get(pair[0])?.name !== undefined && <React.Fragment>{whaleInfo.get(pair[0])?.name}</React.Fragment>}{whaleInfo.get(pair[0])?.name === undefined && <React.Fragment><i>anonymous</i></React.Fragment>}</td>
                                             <td className="text-padding tiny">{FixedPoint.toNumber(pair[1])}</td>
                                         </tr>)
                                     )}
