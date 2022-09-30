@@ -1,4 +1,4 @@
-import { Hash, HashedObject, Identity, Resources, SpaceInit } from '@hyper-hyper-space/core';
+import { Hash, HashedObject, Identity, Resources, Space, SpaceInit } from '@hyper-hyper-space/core';
 import { Blockchain, BlockOp, FixedPoint } from '@hyper-hyper-space/pulsar';
 import { useSpace, useObjectState } from '@hyper-hyper-space/react';
 import React, { useEffect, useState } from 'react';
@@ -7,7 +7,7 @@ import './ChainView.css';
 
 function ChainView(props: {resources: Resources, init?: SpaceInit}) {
 
-    const space      = useSpace<Blockchain>(props.init, true, false);
+    const space      = useSpace<Blockchain>(props.init, true);
     const [loadedAll, setLoadedAll]  = useState(false);
 
     useEffect(() => {
@@ -81,15 +81,11 @@ function ChainView(props: {resources: Resources, init?: SpaceInit}) {
 
         for (const pair of whales) {
             if (whaleInfo.has(pair[0])) {
-                console.log('got info', pair[0], whaleInfo.get(pair[0]))
                 newWhaleInfo.set(pair[0], whaleInfo.get(pair[0]));
             } else {
                 promises.push(props.resources.store.load(pair[0]).then((obj?: HashedObject) => {
                     if (obj instanceof Identity) {
-                        console.log('loaded info', pair[0], obj.info)
                         newWhaleInfo.set(pair[0], obj.info);
-                    } else {
-                        console.log('NO DICE')
                     }
                 }));
             }
@@ -112,6 +108,10 @@ function ChainView(props: {resources: Resources, init?: SpaceInit}) {
             <div className="page inner width">
             { loadedSpace &&
                 <React.Fragment>
+                    <div>
+                        <h5>Network: {Space.getWordCodingForHash(space.getLastHash()).join(' ')}</h5>
+                        <span className="text-padding tiny">{space.getLastHash()}</span>
+                    </div>
                     { loadedChain &&
                         <React.Fragment>
                             
@@ -145,6 +145,7 @@ function ChainView(props: {resources: Resources, init?: SpaceInit}) {
                                     <thead>
                                         <tr>
                                             <td className="text-padding tiny">Address</td>
+                                            <td className="text-padding tiny">Code</td>
                                             <td className="text-padding tiny">Info</td>
                                             <td className="text-padding tiny">Balance</td>
                                         </tr>
@@ -153,7 +154,8 @@ function ChainView(props: {resources: Resources, init?: SpaceInit}) {
                                     {whales.map((pair: [Hash, bigint]) => 
                                         (<tr key={pair[0]}>
                                             <td className="text-padding tiny">{pair[0]}</td>
-                                            <td className="text-padding tiny">{JSON.stringify(whaleInfo.get(pair[0]) || 'loading...')}</td>
+                                            <td className="text-padding tiny">{Space.getWordCodingForHash(pair[0]).join(' ')}</td>
+                                            <td className="text-padding tiny">{whaleInfo.get(pair[0])?.name || 'anonymous'}</td>
                                             <td className="text-padding tiny">{FixedPoint.toNumber(pair[1])}</td>
                                         </tr>)
                                     )}
