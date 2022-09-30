@@ -1,24 +1,38 @@
-import { Hash, Identity, Resources, SpaceInit } from '@hyper-hyper-space/core';
+import { Hash, HashedObject, Identity, Resources, SpaceInit } from '@hyper-hyper-space/core';
 import { Blockchain, BlockOp, FixedPoint } from '@hyper-hyper-space/pulsar';
-import { useSpace, useStateObject } from '@hyper-hyper-space/react';
-import React, { useState } from 'react';
+import { useSpace, useObjectState } from '@hyper-hyper-space/react';
+import React, { useEffect, useState } from 'react';
 
 import './ChainView.css';
 
 function ChainView(props: {resources: Resources, init?: SpaceInit}) {
 
     const space      = useSpace<Blockchain>(props.init, true, false);
-    const blockchain = useStateObject(space, true)?.value;
+    const [loadedAll, setLoadedAll]  = useState(false);
+
+    useEffect(() => {
+        if (space !== undefined) {
+            space.loadAndWatchForChanges().then(() => { setLoadedAll(true) });
+            console.log('xxx LOADED LOADED LOADED xxx')
+        }
+    }, [space]);
+
+    const blockchain = useObjectState(space);
+
+    useEffect(() => {
+        console.log('HEAD BLOCK IS', blockchain?.value?._headBlock?.blockNumber);
+    }, [blockchain]);
+
     
     const [lastBlocks, setLastBlocks] = useState<Array<BlockOp>>([]);
     //const [whales, setWhales]         = useState<Array<[Hash, bigint]>>([]);
 
-    space?.startSync();
+    //space?.startSync();
 
     const loadedSpace = space !== undefined;
-    const loadedChain = loadedSpace && blockchain?.hasLoadedAllChanges();
+    const loadedChain = loadedSpace && loadedAll;
 
-    const headBlock       = blockchain?._headBlock;
+    const headBlock       = blockchain?.value?._headBlock;
     const headBlockNumber = headBlock?._blockNumber;
 
     const headBlockNumberForLoading = headBlockNumber === undefined? undefined :
@@ -28,33 +42,67 @@ function ChainView(props: {resources: Resources, init?: SpaceInit}) {
                                             (headBlockNumber - headBlockNumber % BigInt(10))
                                         );
 
-    let whales: Array<[Hash, bigint]> = [];
+    const [whales, setWhales] = useState<Array<[Hash, bigint]>>([]);
 
-    if (loadedChain && blockchain !== undefined) {
-        const all = Array.from(blockchain._ledger.balances.entries());
-                
-        all.sort((b1, b2) => { 
-            const r = b2[1] - b1[1];
-            if (r > BigInt(0)) {
-                return 1;
-            } else if (r < BigInt(0)) {
-                return -1;
-            } else {
-                return 0;
+    const [whaleInfo, setWhaleInfo] = useState<Map<Hash, any>>(new Map());
+
+    useEffect(() => {
+        if (loadedAll && blockchain !== undefined && blockchain.value !== undefined) {
+            const all = Array.from(blockchain.value._ledger.balances.entries());
+                    
+            all.sort((b1, b2) => { 
+                const r = b2[1] - b1[1];
+                if (r > BigInt(0)) {
+                    return 1;
+                } else if (r < BigInt(0)) {
+                    return -1;
+                } else {
+                    return 0;
+                }
+            });
+    
+            setWhales(all.slice(0, 10));
+        };
+
+        if (headBlock !== undefined && (lastBlocks.length === 0 || lastBlocks[0].getLastHash() !== headBlock.getLastHash())) {
+            lastBlocks.unshift(headBlock);
+            if (lastBlocks.length > 10) {
+                lastBlocks.splice(10, 1);
             }
-        });
-
-        whales = all.slice(0, 10);
-    }
+            setLastBlocks(lastBlocks);
+        }
+    }, [blockchain, loadedAll])
     
 
-    if (headBlock !== undefined && (lastBlocks.length === 0 || lastBlocks[0].getLastHash() !== headBlock.getLastHash())) {
-        lastBlocks.unshift(headBlock);
-        if (lastBlocks.length > 10) {
-            lastBlocks.splice(10, 1);
+    useEffect(() => {
+        const newWhaleInfo = new Map<Hash, any>();
+
+        const promises = new Array<Promise<void>>();
+
+        for (const pair of whales) {
+            if (whaleInfo.has(pair[0])) {
+                console.log('got info', pair[0], whaleInfo.get(pair[0]))
+                newWhaleInfo.set(pair[0], whaleInfo.get(pair[0]));
+            } else {
+                promises.push(props.resources.store.load(pair[0]).then((obj?: HashedObject) => {
+                    if (obj instanceof Identity) {
+                        console.log('loaded info', pair[0], obj.info)
+                        newWhaleInfo.set(pair[0], obj.info);
+                    } else {
+                        console.log('NO DICE')
+                    }
+                }));
+            }
         }
-        setLastBlocks(lastBlocks);
-    }
+
+        Promise.all(promises).then(() => {
+                setWhaleInfo(newWhaleInfo);
+            }
+        );
+    }, [whales]);
+    
+
+    
     
     return (
         <div id="chainView">
@@ -97,6 +145,7 @@ function ChainView(props: {resources: Resources, init?: SpaceInit}) {
                                     <thead>
                                         <tr>
                                             <td className="text-padding tiny">Address</td>
+                                            <td className="text-padding tiny">Info</td>
                                             <td className="text-padding tiny">Balance</td>
                                         </tr>
                                     </thead>
@@ -104,6 +153,7 @@ function ChainView(props: {resources: Resources, init?: SpaceInit}) {
                                     {whales.map((pair: [Hash, bigint]) => 
                                         (<tr key={pair[0]}>
                                             <td className="text-padding tiny">{pair[0]}</td>
+                                            <td className="text-padding tiny">{JSON.stringify(whaleInfo.get(pair[0]) || 'loading...')}</td>
                                             <td className="text-padding tiny">{FixedPoint.toNumber(pair[1])}</td>
                                         </tr>)
                                     )}
