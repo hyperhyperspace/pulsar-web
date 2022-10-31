@@ -1,6 +1,6 @@
 import { Hash, HashedObject, Identity, PeerGroupState, Resources, Space, SpaceInit } from '@hyper-hyper-space/core';
 import { Blockchain, BlockOp, FixedPoint } from '@hyper-hyper-space/pulsar';
-import { useSpace, useObjectState } from '@hyper-hyper-space/react';
+import { useSpace, useObjectState, useSyncState } from '@hyper-hyper-space/react';
 import React, { useEffect, useRef, useState } from 'react';
 
 import './ChainView.css';
@@ -55,6 +55,8 @@ function ChainView(props: {resources: Resources, init?: SpaceInit}) {
     const headBlockNumber = headBlock?._blockNumber;
 
     const [blockTime, setBlockTime] = useState<number|undefined>(undefined);
+
+    const syncState = useSyncState(space);
 
     useEffect(() => {
         const prevBlockHash = headBlock?.getPrevBlockHash();
@@ -267,10 +269,10 @@ function ChainView(props: {resources: Resources, init?: SpaceInit}) {
                     { !loadedChain && 
                         <React.Fragment>
                             { headBlockNumberForLoading === undefined &&
-                                <span>Initializing...</span>
+                                <React.Fragment><span>Initializing...</span> {syncState !== undefined}<span style={{color: "#666"}}>Objects to fetch: {syncState?.opsToFetch}</span></React.Fragment>
                             }
                             { headBlockNumberForLoading !== undefined &&
-                                <span>Loading block #{headBlockNumberForLoading.toString(10)}</span>
+                                <React.Fragment><span>Loading block #{headBlockNumberForLoading.toString(10)}</span>{syncState !== undefined}<span style={{color: "#666"}}>Objects to fetch: {syncState?.opsToFetch}</span></React.Fragment>
                             }
                         </React.Fragment>
                     }
