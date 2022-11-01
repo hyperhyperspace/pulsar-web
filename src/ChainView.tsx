@@ -1,7 +1,7 @@
-import { Hash, HashedObject, Identity, PeerGroupState, Resources, Space, SpaceInit } from '@hyper-hyper-space/core';
+import { Hash, HashedObject, Identity, PeerGroupInfo, PeerGroupState, Resources, Space, SpaceInit } from '@hyper-hyper-space/core';
 import { Blockchain, BlockOp, FixedPoint } from '@hyper-hyper-space/pulsar';
 import { useSpace, useObjectState, useSyncState } from '@hyper-hyper-space/react';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { Fragment, useEffect, useRef, useState } from 'react';
 
 import './ChainView.css';
 
@@ -56,7 +56,15 @@ function ChainView(props: {resources: Resources, init?: SpaceInit}) {
 
     const [blockTime, setBlockTime] = useState<number|undefined>(undefined);
 
-    const syncState = useSyncState(space);
+    const [peerGroupId, setPeerGroupId] = useState<string>();
+
+    useEffect(() => {
+        if (space !== undefined) {
+            space.getPeerGroup().then((pg: PeerGroupInfo) => { setPeerGroupId(pg.id)});
+        }
+    }, [space])
+
+    const syncState = useSyncState(space, peerGroupId);
 
     useEffect(() => {
         const prevBlockHash = headBlock?.getPrevBlockHash();
@@ -179,8 +187,15 @@ function ChainView(props: {resources: Resources, init?: SpaceInit}) {
                         <tbody>
                             <tr>
                                 <td className="text-padding tiny">
-                                    {peerGroupState.remote.size === 0 && <b style={{color: 'red'}}>Not connected</b>}
-                                    {peerGroupState.remote.size > 0 && <b style={{color: 'green'}}>Connected</b>}
+                                    {(syncState === undefined || Array.from(Object.keys(syncState.remoteStateHashes)).length === 0) && <b style={{color: 'red'}}>Not connected</b>}
+                                    {(syncState !== undefined && Array.from(Object.keys(syncState.remoteStateHashes)).length > 0) && <b style={{color: 'green'}}>Connected</b>}
+                                    {syncState !== undefined && 
+                                        <Fragment>
+                                            <br/>
+                                            {syncState.opsToFetch === 0 && <span style={{color: '#666'}}>In sync</span>}
+                                            {syncState.opsToFetch > 0 && <span style={{color: '#666'}}>Fetching {syncState.opsToFetch} objs</span>}
+                                        </Fragment>
+                                    }
                                 </td>
                                 <td className="text-padding tiny">
                                     <b>{peerGroupState.remote.size}</b>
@@ -269,10 +284,10 @@ function ChainView(props: {resources: Resources, init?: SpaceInit}) {
                     { !loadedChain && 
                         <React.Fragment>
                             { headBlockNumberForLoading === undefined &&
-                                <React.Fragment><span>Initializing...</span> {syncState !== undefined}<span style={{color: "#666"}}>Objects to fetch: {syncState?.opsToFetch}</span></React.Fragment>
+                                <span>Initializing...</span>
                             }
                             { headBlockNumberForLoading !== undefined &&
-                                <React.Fragment><span>Loading block #{headBlockNumberForLoading.toString(10)}</span>{syncState !== undefined}<span style={{color: "#666"}}>Objects to fetch: {syncState?.opsToFetch}</span></React.Fragment>
+                                <span>Loading block #{headBlockNumberForLoading.toString(10)}</span>
                             }
                         </React.Fragment>
                     }
